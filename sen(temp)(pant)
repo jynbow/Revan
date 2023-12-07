@@ -1,0 +1,61 @@
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+  const int pinDatosDQ = 3;
+  const int salida1 = 5;
+  const int salida2 = 6;
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+  Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+#define NUMFLAKES     10 // Number of snowflakes in the animation example
+#define LOGO_HEIGHT   16
+#define LOGO_WIDTH    16
+  OneWire oneWireObjeto(pinDatosDQ);
+  DallasTemperature sensorDS18B20(&oneWireObjeto);
+
+void setup() {
+  Serial.begin(9600);
+  sensorDS18B20.begin();
+  pinMode(salida1, OUTPUT);
+  pinMode(salida2, OUTPUT);
+    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+}
+void loop() {
+  sensorDS18B20.requestTemperatures();
+  float temperatura = sensorDS18B20.getTempCByIndex(0);
+  Serial.print("Temperatura sensor 1:");
+  Serial.print(temperatura);
+  Serial.println(" C°");
+  // Mapear la temperatura al rango de 25°C a 30°C a un rango de voltajes de 0V a 5V
+  int voltaje1 = map(temperatura, 25, 35, 0, 255);
+  int voltaje2 = map(temperatura, 25, 35, 255, 0);
+  // Asegurarse de que el voltaje esté dentro del rango permitido
+  voltaje1 = constrain(voltaje1, 0, 220);
+  voltaje2 = constrain(voltaje2, 0, 220);
+  // Establecer la salida con el voltaje mapeado
+  analogWrite(salida1, voltaje1);
+  analogWrite(salida2, voltaje2);
+  delay(0.1);
+  for (int i=0;i<10;i++)
+    {
+    display.clearDisplay();
+    display.setTextSize(2.5);             // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+      display.setCursor(20,10);             // Start at top-left corner
+        display.println(temperatura);
+      display.setTextSize(1);  
+      display.setCursor(25,0);
+        display.println("temperatura"); 
+    display.display();
+    delay(0.1); 
+    }
+}
